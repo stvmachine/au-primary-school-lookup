@@ -4,12 +4,8 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import {
   ArrowRight,
   BookOpenCheck,
-  CheckCircle2,
   CircleAlert,
   Clock3,
-  ExternalLink,
-  GraduationCap,
-  Info,
   LoaderCircle,
   MapPin,
   Navigation,
@@ -23,7 +19,6 @@ import {
 import Link from "next/link";
 import type {
   AddressSuggestion,
-  AssignedSchool,
   EnrolmentYear,
   SchoolLookupResponse,
 } from "@/lib/types";
@@ -247,6 +242,8 @@ function SearchPanel({
               ref={inputRef}
               id="address-search"
               type="text"
+              role="combobox"
+              aria-autocomplete="list"
               value={query}
               placeholder="Start typing a street address…"
               autoComplete="off"

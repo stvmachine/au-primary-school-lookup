@@ -6,7 +6,7 @@
     "dev": "dotenvx run -- next dev",
     "build": "dotenvx run -- next build",
     "start": "dotenvx run -- next start",
-    "lint": "eslint",
+    "lint": "eslint && oxlint",
     "db:generate": "dotenvx run -- drizzle-kit generate"
   },
   "dependencies": {
@@ -32,6 +32,7 @@
     "drizzle-kit": "^0.31.10",
     "eslint": "^9",
     "eslint-config-next": "16.3.4",
+    "oxlint": "^1.82.0",
     "postcss": "^8.5.28",
     "tailwindcss": "^3.4.19",
     "typescript": "^5"
