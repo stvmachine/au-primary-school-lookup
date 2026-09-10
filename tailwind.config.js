@@ -1,4 +1,4 @@
-/* eslint-disable @typescript-eslint/no-require-imports -- Tailwind v3 config is CJS; require() is the supported plugin idiom. */
+// Tailwind v3 config is CJS; require() is the supported plugin idiom.
 /** @type {import('tailwindcss').Config} */
 module.exports = {
   darkMode: ["class"],

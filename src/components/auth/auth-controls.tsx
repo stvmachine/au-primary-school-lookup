@@ -95,7 +95,6 @@ export default function AuthControls() {
       >
         <span className="auth-avatar">
           {user.image ? (
-            // eslint-disable-next-line @next/next/no-img-element
             <img src={user.image} alt="" />
           ) : (
             firstName.charAt(0).toUpperCase()
