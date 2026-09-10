@@ -68,7 +68,7 @@ psql "$DATABASE_URL" -f drizzle/0000_*.sql
 | Command | Purpose |
 | --- | --- |
 | `bun run dev` | Dev server (decrypts `.env` via dotenvx) |
-| `bun run build` | Production build |
+| `bun run build` | oxlint gate (`--deny-warnings`) + production build |
 | `bun run start` | Serve the production build |
 | `bun run lint` | oxlint |
 | `bun run db:generate` | Generate SQL migrations from the schema |

@@ -5,7 +5,7 @@
   "packageManager": "bun@1.3.14",
   "scripts": {
     "dev": "dotenvx run -- next dev",
-    "build": "dotenvx run -- next build",
+    "build": "oxlint --deny-warnings && dotenvx run -- next build",
     "start": "dotenvx run -- next start",
     "lint": "oxlint",
     "db:generate": "dotenvx run -- drizzle-kit generate"
