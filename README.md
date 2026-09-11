@@ -9,7 +9,7 @@ Migrated from the Vite + tRPC app in the repository root (legacy code in `../api
 - **Next.js 16** (App Router, TypeScript) — frontend + API route handlers
 - **Plain CSS design system** (ported verbatim from the Vite app; Tailwind v3 present for the shadcn-style base layer)
 - **better-auth** — Google OAuth sign-in
-- **Drizzle ORM + Postgres (Supabase)** — auth tables + `search_history`
+- **Drizzle ORM + Postgres (Supabase)** — auth tables, `search_history`, and the cached `better_education_rankings` row
 - **cheerio + zod** — Better Education table parsing + input validation
 - **dotenvx** — encrypted env files; secrets never appear in the repo as plaintext
 
@@ -43,8 +43,8 @@ bunx dotenvx set BETTER_AUTH_SECRET "$(openssl rand -base64 32)" -f .env --encry
 | --- | --- |
 | `BETTER_AUTH_SECRET` | Session-signing secret. Already generated and committed (encrypted). Rotate with the command above. |
 | `BETTER_AUTH_URL` | App base URL — `http://localhost:3000` in dev, your domain in production. |
-| `DATABASE_URL` | Postgres connection string (Supabase → Project Settings → Database). Empty until you set it. |
-| `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET` | Google Cloud Console → APIs & Services → Credentials → OAuth 2.0 Client ID (Web application). Empty until you set them. |
+| `DATABASE_URL` | Postgres connection string (Supabase → Project Settings → Database). |
+| `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET` | Google Cloud Console → APIs & Services → Credentials → OAuth 2.0 Client ID (Web application). |
 
 Google OAuth authorized redirect URIs must include:
 
@@ -63,6 +63,10 @@ psql "$DATABASE_URL" -f drizzle/0000_*.sql
 
 (Or paste the file into the Supabase SQL editor.) After changing `drizzle/schema.ts`, regenerate with `bun run db:generate`.
 
+### Refreshing the ranking cache
+
+`bun run db:refresh-rankings` scrapes the Better Education table (via `curl` — bun/node `fetch` is TLS-fingerprinted and rejected) and upserts the `primary-melbourne` row. It must run from a non-blocked (residential) IP. When Better Education publishes a new year's table, the script stores the new `ranking_year` automatically and the staleness warning clears itself.
+
 ## Scripts
 
 | Command | Purpose |
@@ -72,6 +76,7 @@ psql "$DATABASE_URL" -f drizzle/0000_*.sql
 | `bun run start` | Serve the production build |
 | `bun run lint` | oxlint |
 | `bun run db:generate` | Generate SQL migrations from the schema |
+| `bun run db:refresh-rankings` | Scrape Better Education and upsert the cached ranking row (run locally; see above) |
 
 ## Deploying (Vercel)
 
@@ -84,7 +89,7 @@ psql "$DATABASE_URL" -f drizzle/0000_*.sql
 
 1. **Address autocomplete** — Mapshare Vic ArcGIS geocoder `/suggest` (live, debounced, keyboard-navigable).
 2. **Zone lookup** — Find My School `lookup/{year}/{primary|year7}/{lng},{lat}` plus `schools-{year}.json` metadata, for enrolment years 2026/2027.
-3. **Ranking cross-check** — Better Education table scraped with Cheerio. Three-tier source strategy: direct → Google Translate proxy → bundled snapshot (`src/data/betterEducationPrimaryFallback.ts`, 10-minute cache for the snapshot, 6 hours for live). Schools are matched by normalised name with postcode tie-breaking; absence from the index is reported explicitly, and secondary zones show "primary ranking not applicable".
+3. **Ranking cross-check** — Better Education table parsed with Cheerio. Better Education blocks datacenter IPs (Cloudflare), so production servers cannot scrape it live; the source chain is direct scrape → Supabase cache (`better_education_rankings` row, shown as "Cached from database") → bundled snapshot (`src/data/betterEducationPrimaryFallback.ts`, always warned about). Every ranking carries a `rankingYear`; when it is older than the current calendar year the API adds a staleness warning, and saved history snapshots keep the year, source, and warnings from the moment of the search. Schools are matched by normalised name with postcode tie-breaking; absence from the index is reported explicitly, and secondary zones show "primary ranking not applicable".
 
 Caching is in-memory per server instance (ranking 6 h, school metadata 6 h).
 
