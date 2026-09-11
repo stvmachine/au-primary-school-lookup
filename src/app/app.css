@@ -1643,6 +1643,31 @@ main {
   font-size: 0.74rem;
 }
 
+.history-source-links {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.history-source-links a {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  color: inherit;
+  text-decoration: none;
+}
+
+.history-source-links a:hover {
+  text-decoration: underline;
+}
+
+li.history-card-sources .history-source-links {
+  display: inline-flex;
+  flex-direction: row;
+  gap: 12px;
+  vertical-align: baseline;
+}
+
 .history-rank {
   font-family: "JetBrains Mono", monospace;
   font-weight: 700;

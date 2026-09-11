@@ -6,6 +6,7 @@ import {
   ChevronRight,
   CircleAlert,
   Clock3,
+  ExternalLink,
   LoaderCircle,
   Pencil,
   RefreshCw,
@@ -17,6 +18,10 @@ import Link from "next/link";
 import type { HistoryEntry } from "@/lib/types-history";
 import type { SchoolLookupResponse } from "@/lib/types";
 import SchoolCard from "@/components/school-card";
+
+const FIND_MY_SCHOOL_URL = "https://www.findmyschool.vic.gov.au";
+const BETTER_EDUCATION_FALLBACK_URL =
+  "https://bettereducation.com.au/school/Primary/vic/melbourne_top_government_primary_schools.aspx";
 
 type LoadState =
   | { status: "loading" }
@@ -55,6 +60,22 @@ function sourceLabel(source: SchoolLookupResponse["rankingIndex"]["source"]) {
 
 function primaryOf(entry: HistoryEntry) {
   return entry.schools.find((school) => school.role === "primary") ?? null;
+}
+
+function sourceLinks(entry: HistoryEntry) {
+  const rankingUrl = entry.rankingIndex.sourceUrl || BETTER_EDUCATION_FALLBACK_URL;
+  return (
+    <>
+      <a href={rankingUrl} target="_blank" rel="noreferrer">
+        <ExternalLink size={11} aria-hidden="true" />
+        Better Education
+      </a>
+      <a href={FIND_MY_SCHOOL_URL} target="_blank" rel="noreferrer">
+        <ExternalLink size={11} aria-hidden="true" />
+        Find My School
+      </a>
+    </>
+  );
 }
 
 function rankText(entry: HistoryEntry) {
@@ -470,6 +491,7 @@ export default function HistoryPage({ user: _user }: { user: unknown }) {
                   <th scope="col">SES</th>
                   <th scope="col">Saved</th>
                   <th scope="col">Note</th>
+                  <th scope="col">Sources</th>
                 </tr>
               </thead>
               <tbody>
@@ -519,10 +541,15 @@ export default function HistoryPage({ user: _user }: { user: unknown }) {
                       <td>{metricValue(entry, "ses") ?? "—"}</td>
                       <td>{formatSavedAt(entry.createdAt)}</td>
                       <td>{renderNoteCell(entry)}</td>
+                      <td>
+                        <span className="history-cell-muted history-source-links">
+                          {sourceLinks(entry)}
+                        </span>
+                      </td>
                     </tr>,
                     expanded ? (
                       <tr key={`${entry.id}-detail`} className="history-expanded-row">
-                        <td className="history-expanded-cell" colSpan={11}>
+                        <td className="history-expanded-cell" colSpan={12}>
                           {renderDetail(entry)}
                         </td>
                       </tr>
@@ -585,6 +612,10 @@ export default function HistoryPage({ user: _user }: { user: unknown }) {
                     </li>
                     <li>
                       Saved <strong>{formatSavedAt(entry.createdAt)}</strong>
+                    </li>
+                    <li className="history-card-sources">
+                      Sources{" "}
+                      <span className="history-source-links">{sourceLinks(entry)}</span>
                     </li>
                   </ul>
                   <div style={{ marginTop: 10 }}>{renderNoteCell(entry)}</div>
