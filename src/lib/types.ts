@@ -26,7 +26,7 @@ export type RankingEntry = {
   ses: number | null;
 };
 
-export type RankingSource = "live-direct" | "live-proxy" | "snapshot";
+export type RankingSource = "live-direct" | "live-proxy" | "database" | "snapshot";
 
 export type RankingIndex = {
   sourceUrl: string;

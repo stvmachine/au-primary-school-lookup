@@ -8,7 +8,8 @@
     "build": "oxlint --deny-warnings && dotenvx run -- next build",
     "start": "dotenvx run -- next start",
     "lint": "oxlint",
-    "db:generate": "dotenvx run -- drizzle-kit generate"
+    "db:generate": "dotenvx run -- drizzle-kit generate",
+    "db:refresh-rankings": "dotenvx run -- bun scripts/refresh-better-education-rankings.ts"
   },
   "dependencies": {
     "@better-auth/drizzle-adapter": "^1.7.3",

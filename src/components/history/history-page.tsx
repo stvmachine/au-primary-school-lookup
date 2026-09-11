@@ -49,6 +49,7 @@ function formatSavedAt(value: string) {
 function sourceLabel(source: SchoolLookupResponse["rankingIndex"]["source"]) {
   if (source === "live-direct") return "Live from Better Education";
   if (source === "live-proxy") return "Live via readable access";
+  if (source === "database") return "Cached from database";
   return "Bundled ranking snapshot";
 }
 

@@ -3,6 +3,7 @@ import {
   boolean,
   doublePrecision,
   index,
+  integer,
   jsonb,
   pgTable,
   text,
@@ -119,3 +120,23 @@ export const searchHistory = pgTable(
   },
   (table) => [index("search_history_user_id_idx").on(table.userId)],
 );
+
+// ---------------------------------------------------------------------------
+// App table: Better Education ranking snapshots, refreshed by
+// scripts/refresh-better-education-rankings.ts. The table is created by a
+// standalone migration; this definition must match it exactly.
+// ---------------------------------------------------------------------------
+
+export const betterEducationRankings = pgTable("better_education_rankings", {
+  id: text("id").primaryKey(),
+  title: text("title").notNull(),
+  sourceUrl: text("source_url").notNull(),
+  rankingYear: integer("ranking_year").notNull(),
+  totalRankedSchools: integer("total_ranked_schools").notNull(),
+  entries: jsonb("entries").notNull(),
+  source: text("source").notNull(),
+  capturedAt: timestamp("captured_at", { withTimezone: true, mode: "date" }).notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true, mode: "date" })
+    .notNull()
+    .defaultNow(),
+});

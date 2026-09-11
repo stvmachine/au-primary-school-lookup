@@ -1,4 +1,5 @@
 import * as cheerio from "cheerio";
+import { eq } from "drizzle-orm";
 import type {
   AddressResult,
   AddressSuggestion,
@@ -10,14 +11,18 @@ import type {
   SchoolLookupResponse,
 } from "@/lib/types";
 import { betterEducationPrimaryFallback } from "@/data/betterEducationPrimaryFallback";
+import { betterEducationRankings } from "../../drizzle/schema";
+import { getDb } from "@/lib/db";
 
 const MAPSHARE_GEOCODER =
   "https://corp-geo.mapshare.vic.gov.au/arcgis/rest/services/Geocoder/VMAddressEZIAdd/GeocodeServer";
 const FIND_MY_SCHOOL_BASE = "https://www.findmyschool.vic.gov.au";
 const BETTER_EDUCATION_URL =
   "https://bettereducation.com.au/school/Primary/vic/melbourne_top_government_primary_schools.aspx";
-const BETTER_EDUCATION_PROXY_URL =
-  "https://bettereducation-com-au.translate.goog/school/Primary/vic/melbourne_top_government_primary_schools.aspx?_x_tr_sl=auto&_x_tr_tl=en&_x_tr_hl=en";
+// Public reader/proxy mirrors have all been tried and do not work for this
+// site: translate.goog returns 400, archive.org excludes it (403), and
+// allorigins/codetabs time out. Datacenter IPs are rejected outright, so the
+// bundled snapshot in src/data/ is the only reliable fallback.
 
 const RANKING_CACHE_MS = 6 * 60 * 60 * 1000;
 const SCHOOL_CACHE_MS = 6 * 60 * 60 * 1000;
@@ -87,7 +92,8 @@ async function fetchText(url: string, timeoutMs = 20000) {
     headers: {
       Accept: "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
       "Accept-Language": "en-AU,en;q=0.9",
-      "User-Agent": "Mozilla/5.0 (compatible; Victorian School Zone Lookup)",
+      "User-Agent":
+        "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36",
     },
     signal: AbortSignal.timeout(timeoutMs),
   });
@@ -234,7 +240,7 @@ function parseNumber(value: string | null | undefined) {
   return Number.isFinite(parsed) ? parsed : null;
 }
 
-function parseRankingHtml(html: string, source: RankingSource): RankingIndex {
+export function parseRankingHtml(html: string, source: RankingSource): RankingIndex {
   const $ = cheerio.load(html);
   const table = $("#ctl00_ContentPlaceHolder1_GridView1");
   const entries: RankingEntry[] = [];
@@ -303,12 +309,37 @@ function fallbackRankingIndex(): RankingIndex {
   };
 }
 
+const RANKING_ID_PRIMARY_MELBOURNE = "primary-melbourne";
+
+async function getDatabaseRankingIndex(): Promise<RankingIndex | null> {
+  const raw = process.env.DATABASE_URL;
+  // dotenvx injects raw ciphertext when .env.keys is absent; treat it as unset.
+  if (!raw || raw.startsWith("encrypted:")) return null;
+
+  const row = await getDb()
+    .select()
+    .from(betterEducationRankings)
+    .where(eq(betterEducationRankings.id, RANKING_ID_PRIMARY_MELBOURNE))
+    .limit(1);
+  const record = row[0];
+  if (!record) return null;
+
+  return {
+    sourceUrl: record.sourceUrl,
+    title: record.title,
+    rankingYear: record.rankingYear,
+    totalRankedSchools: record.totalRankedSchools,
+    checkedAt: record.capturedAt.toISOString(),
+    source: "database",
+    entries: record.entries as RankingEntry[],
+  };
+}
+
 async function getRankingIndex(): Promise<RankingIndex> {
   if (rankingCache && rankingCache.expiresAt > Date.now()) return rankingCache.value;
 
   const attempts: Array<{ url: string; source: RankingSource }> = [
     { url: BETTER_EDUCATION_URL, source: "live-direct" },
-    { url: BETTER_EDUCATION_PROXY_URL, source: "live-proxy" },
   ];
 
   for (const attempt of attempts) {
@@ -321,9 +352,26 @@ async function getRankingIndex(): Promise<RankingIndex> {
         value: ranking,
       };
       return ranking;
-    } catch {
-      // Try the next access path, then fall back to the bundled snapshot.
+    } catch (error) {
+      console.warn(
+        `Better Education live refresh failed via ${attempt.source}:`,
+        error,
+      );
+      // Fall back to the database, then the bundled snapshot.
     }
+  }
+
+  try {
+    const databaseRanking = await getDatabaseRankingIndex();
+    if (databaseRanking) {
+      rankingCache = {
+        expiresAt: Date.now() + RANKING_CACHE_MS,
+        value: databaseRanking,
+      };
+      return databaseRanking;
+    }
+  } catch (error) {
+    console.warn("Better Education database read failed:", error);
   }
 
   const fallback = fallbackRankingIndex();
@@ -430,6 +478,12 @@ export async function lookupSchools(input: {
     if (rankingIndex.source === "snapshot") {
       warnings.push(
         "Better Education could not be refreshed live, so the bundled ranking snapshot was used.",
+      );
+    }
+    const currentYear = new Date().getFullYear();
+    if (rankingIndex.rankingYear < currentYear) {
+      warnings.push(
+        `Showing the ${rankingIndex.rankingYear} school rankings — results for ${currentYear} have not been published or refreshed yet.`,
       );
     }
 
