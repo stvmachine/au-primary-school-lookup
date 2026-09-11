@@ -82,6 +82,7 @@ psql "$DATABASE_URL" -f drizzle/0000_*.sql
 
 1. Push the repository and import it in Vercel with **root directory `next-app`**.
 2. Set the env vars in Project → Settings → Environment Variables. Environment variables set on the platform take precedence over the committed encrypted `.env`, so this is the recommended approach for production (production `BETTER_AUTH_URL` = your domain, plus `DATABASE_URL` and the Google credentials).
+   - **Vercel serverless is IPv4-only**: the direct Supabase host (`db.<ref>.supabase.co`) is IPv6-only and will fail with `ENOTFOUND`. Use the Supavisor pooler — `postgresql://<role>.<project-ref>:<password>@aws-0-<region>.pooler.supabase.com:6543/postgres?sslmode=no-verify` — the `<role>.<project-ref>` username is required because serverless TLS may not send SNI.
 3. Add the production Google OAuth redirect URI.
 4. Deploy. `bun run build` must pass; there is no other build step.
 
